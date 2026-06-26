@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Arcade: Codex vs Claude Code</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18212f;
+      --muted: #647085;
+      --line: #d8dee8;
+      --panel: #ffffff;
+      --codex: #2563eb;
+      --claude: #d97706;
+      --green: #14804a;
+      --red: #bc2f32;
+      --bg: #f5f1e8;
+      --shadow: 0 18px 50px rgba(24, 33, 47, .14);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(24,33,47,.06) 1px, transparent 1px) 0 0 / 44px 44px,
+        linear-gradient(rgba(24,33,47,.05) 1px, transparent 1px) 0 0 / 44px 44px,
+        radial-gradient(circle at 80% 10%, rgba(37,99,235,.16), transparent 28%),
+        radial-gradient(circle at 12% 85%, rgba(217,119,6,.15), transparent 26%),
+        var(--bg);
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1180px, calc(100vw - 28px));
+      min-height: calc(100vh - 28px);
+      margin: 14px auto;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: rgba(255,255,255,.86);
+      box-shadow: 6px 6px 0 rgba(24, 33, 47, .16);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 46px;
+      height: 46px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #ffd166;
+      display: grid;
+      place-items: center;
+      box-shadow: inset -5px -5px 0 rgba(0,0,0,.08);
+      flex: none;
+    }
+
+    .mark svg { width: 32px; height: 32px; }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 3vw, 2.1rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fff;
+      padding: 7px 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .side, .arena {
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: rgba(255,255,255,.92);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .side {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 590px;
+    }
+
+    .section-title {
+      margin: 0;
+      padding: 14px 16px 10px;
+      border-bottom: 2px solid var(--ink);
+      font-size: 1rem;
+      background: #f8fafc;
+    }
+
+    .agents {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      align-content: start;
+    }
+
+    .agent {
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+
+    .agent.active {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 rgba(24,33,47,.16);
+    }
+
+    .agent-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 9px;
+    }
+
+    .avatar {
+      width: 54px;
+      height: 54px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      flex: none;
+    }
+
+    .codex .avatar { background: #dbeafe; }
+    .claude .avatar { background: #ffedd5; }
+
+    .avatar svg { width: 42px; height: 42px; }
+
+    .agent h2 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .agent p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.35;
+      font-size: .92rem;
+    }
+
+    .bars {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 9px;
+      align-items: center;
+      font-size: .8rem;
+      font-weight: 800;
+      color: #334155;
+    }
+
+    .meter {
+      height: 10px;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      background: #eef2f7;
+      overflow: hidden;
+    }
+
+    .meter span {
+      display: block;
+      height: 100%;
+      background: currentColor;
+    }
+
+    .codex .meter { color: var(--codex); }
+    .claude .meter { color: var(--claude); }
+
+    .tips {
+      padding: 14px;
+      border-top: 2px solid var(--ink);
+      background: #f8fafc;
+      color: #475569;
+      font-size: .92rem;
+      line-height: 1.4;
+    }
+
+    .tips strong { color: var(--ink); }
+
+    .arena {
+      min-height: 590px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .track {
+      position: relative;
+      min-height: 250px;
+      padding: 20px;
+      border-bottom: 2px solid var(--ink);
+      background:
+        linear-gradient(90deg, rgba(24,33,47,.08) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(rgba(24,33,47,.06) 1px, transparent 1px) 0 0 / 34px 34px,
+        #eef6ff;
+      overflow: hidden;
+    }
+
+    .lane {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      height: 68px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: rgba(255,255,255,.68);
+    }
+
+    .lane.one { top: 36px; }
+    .lane.two { top: 136px; }
+
+    .finish {
+      position: absolute;
+      top: 18px;
+      right: 42px;
+      bottom: 18px;
+      width: 22px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(45deg, #111 25%, transparent 25%),
+        linear-gradient(-45deg, #111 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #111 75%),
+        linear-gradient(-45deg, transparent 75%, #111 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-color: #fff;
+    }
+
+    .runner {
+      position: absolute;
+      left: 44px;
+      width: 54px;
+      height: 54px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      transition: left .45s cubic-bezier(.2,.8,.2,1);
+      box-shadow: 4px 4px 0 rgba(24,33,47,.16);
+      z-index: 2;
+    }
+
+    .runner.codex-runner { top: 43px; background: #bfdbfe; }
+    .runner.claude-runner { top: 143px; background: #fed7aa; }
+    .runner svg { width: 38px; height: 38px; }
+
+    .prompt {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .round-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      color: #475569;
+      font-size: .9rem;
+      font-weight: 800;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+      padding: 5px 9px;
+    }
+
+    .scenario {
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 18px;
+      background: #fff;
+    }
+
+    .scenario h2 {
+      margin: 0 0 9px;
+      font-size: clamp(1.35rem, 2.8vw, 2.35rem);
+      letter-spacing: 0;
+    }
+
+    .scenario p {
+      margin: 0;
+      color: #3f4b5d;
+      line-height: 1.5;
+      font-size: 1.03rem;
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .choice {
+      min-height: 112px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+      text-align: left;
+      display: grid;
+      gap: 7px;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+
+    .choice:hover, .choice:focus-visible {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 rgba(24,33,47,.17);
+      outline: none;
+    }
+
+    .choice strong {
+      font-size: 1.15rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .choice span {
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .choice.codex-choice strong { color: var(--codex); }
+    .choice.claude-choice strong { color: var(--claude); }
+
+    .feedback {
+      min-height: 132px;
+      border-top: 2px solid var(--ink);
+      padding: 16px 20px;
+      background: #fff;
+      display: grid;
+      gap: 12px;
+      align-content: center;
+    }
+
+    .feedback h3 {
+      margin: 0;
+      font-size: 1.12rem;
+    }
+
+    .feedback p {
+      margin: 0;
+      color: #3f4b5d;
+      line-height: 1.45;
+    }
+
+    .next-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .primary {
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #ffd166;
+      font-weight: 900;
+      box-shadow: 4px 4px 0 rgba(24,33,47,.18);
+    }
+
+    .primary:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .secondary {
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #fff;
+      font-weight: 900;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .result-card {
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .result-card h3 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+    }
+
+    .result-card ul {
+      margin: 0;
+      padding-left: 19px;
+      color: #3f4b5d;
+      line-height: 1.45;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 860px) {
+      .shell {
+        width: min(100vw - 18px, 680px);
+        margin: 9px auto;
+      }
+
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .scoreboard {
+        justify-content: flex-start;
+      }
+
+      .stage {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        min-height: auto;
+      }
+
+      .agents {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .tips {
+        display: none;
+      }
+
+      .arena {
+        min-height: 620px;
+      }
+    }
+
+    @media (max-width: 580px) {
+      .agents, .choices, .result-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .track {
+        min-height: 230px;
+      }
+
+      .choice {
+        min-height: auto;
+      }
+
+      .bar-row {
+        grid-template-columns: 86px 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="img">
+            <rect x="8" y="12" width="48" height="40" rx="6" fill="#fff" stroke="#18212f" stroke-width="4"/>
+            <path d="M19 29h26M19 39h16" stroke="#18212f" stroke-width="4" stroke-linecap="round"/>
+            <path d="M18 20h4M28 20h4M38 20h4" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Agent Arcade</h1>
+          <p class="subtitle">Pick the right coding assistant for each mission.</p>
+        </div>
+      </div>
+      <div class="scoreboard" aria-live="polite">
+        <span class="pill" id="roundPill">Round 1 / 8</span>
+        <span class="pill" id="scorePill">Score 0</span>
+        <span class="pill" id="streakPill">Streak 0</span>
+      </div>
+    </header>
+
+    <section class="stage">
+      <aside class="side">
+        <h2 class="section-title">Agent Profiles</h2>
+        <div class="agents">
+          <article class="agent codex" id="codexCard">
+            <div class="agent-head">
+              <div class="avatar" aria-hidden="true">
+                <svg viewBox="0 0 64 64">
+                  <rect x="12" y="10" width="40" height="44" rx="8" fill="#fff" stroke="#18212f" stroke-width="4"/>
+                  <path d="M22 25l8 7-8 7M34 41h10" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M20 14h24" stroke="#18212f" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <h2>Codex</h2>
+                <p>Built for hands-on software work inside a repo.</p>
+              </div>
+            </div>
+            <div class="bars">
+              <div class="bar-row"><span>Repo ops</span><div class="meter"><span style="width:92%"></span></div></div>
+              <div class="bar-row"><span>Terminal</span><div class="meter"><span style="width:90%"></span></div></div>
+              <div class="bar-row"><span>App build</span><div class="meter"><span style="width:88%"></span></div></div>
+            </div>
+          </article>
+
+          <article class="agent claude" id="claudeCard">
+            <div class="agent-head">
+              <div class="avatar" aria-hidden="true">
+                <svg viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="22" fill="#fff" stroke="#18212f" stroke-width="4"/>
+                  <path d="M21 28c4-9 18-9 22 0M22 39c7 6 13 6 20 0" fill="none" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+                  <path d="M19 20l-5-5M45 20l5-5" stroke="#18212f" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <h2>Claude Code</h2>
+                <p>Strong collaborator for broad reasoning and code edits.</p>
+              </div>
+            </div>
+            <div class="bars">
+              <div class="bar-row"><span>Reasoning</span><div class="meter"><span style="width:92%"></span></div></div>
+              <div class="bar-row"><span>Writing</span><div class="meter"><span style="width:90%"></span></div></div>
+              <div class="bar-row"><span>Planning</span><div class="meter"><span style="width:86%"></span></div></div>
+            </div>
+          </article>
+        </div>
+        <div class="tips">
+          <strong>How to play:</strong> choose the assistant that best fits the mission. Some rounds are close calls; the explanation is the point.
+        </div>
+      </aside>
+
+      <section class="arena">
+        <div class="track" aria-label="Progress race">
+          <div class="lane one"></div>
+          <div class="lane two"></div>
+          <div class="finish" aria-hidden="true"></div>
+          <div class="runner codex-runner" id="codexRunner" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <rect x="11" y="13" width="42" height="38" rx="7" fill="#fff" stroke="#18212f" stroke-width="4"/>
+              <path d="M22 29l7 5-7 5M34 40h9" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="runner claude-runner" id="claudeRunner" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="22" fill="#fff" stroke="#18212f" stroke-width="4"/>
+              <path d="M22 29c5-7 15-7 20 0M23 39c6 5 12 5 18 0" fill="none" stroke="#d97706" stroke-width="5" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="prompt" id="gamePanel">
+          <div class="round-meta">
+            <span class="tag" id="categoryTag">Repo repair</span>
+            <span class="tag" id="difficultyTag">Difficulty: warmup</span>
+          </div>
+          <article class="scenario">
+            <h2 id="scenarioTitle">A test suite is failing in a local repo</h2>
+            <p id="scenarioText">You need an agent to inspect files, run commands, patch code, and verify the fix without turning the whole project upside down.</p>
+          </article>
+          <div class="choices">
+            <button class="choice codex-choice" data-agent="codex">
+              <strong>Choose Codex <span>Repo pilot</span></strong>
+              <span>Best when the job needs direct workspace changes, terminal loops, and verification.</span>
+            </button>
+            <button class="choice claude-choice" data-agent="claude">
+              <strong>Choose Claude Code <span>Reasoning partner</span></strong>
+              <span>Best when the job needs broad context synthesis, careful explanation, or ideation.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="feedback" id="feedback">
+          <h3>Make your first pick.</h3>
+          <p>Each round teaches a practical distinction, not a permanent ranking. The right answer changes with the work.</p>
+          <div class="next-row">
+            <button class="secondary" id="restartButton" type="button">Restart</button>
+            <button class="primary" id="nextButton" type="button" disabled>Next Mission</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const missions = [
+      {
+        category: "Repo repair",
+        difficulty: "warmup",
+        title: "A test suite is failing in a local repo",
+        text: "You need an agent to inspect files, run commands, patch code, and verify the fix without turning the whole project upside down.",
+        best: "codex",
+        codex: 14,
+        claude: 8,
+        lesson: "Codex is the better fit when the work is an end-to-end local engineering loop: read the repo, edit files, run tests, repeat, and leave a clear summary.",
+        close: "Claude Code can also help with code, but this specific mission rewards tight terminal-and-workspace execution."
+      },
+      {
+        category: "Architecture",
+        difficulty: "medium",
+        title: "You need to compare two designs before anyone writes code",
+        text: "The team wants tradeoffs, failure modes, implementation risks, and a crisp recommendation they can discuss in a planning meeting.",
+        best: "claude",
+        codex: 8,
+        claude: 14,
+        lesson: "Claude Code is often a strong fit for broad reasoning, design critique, and turning ambiguous requirements into a plan people can react to.",
+        close: "Codex can reason too, but its advantage shows up more when the plan becomes concrete files and commands."
+      },
+      {
+        category: "Product UI",
+        difficulty: "medium",
+        title: "Build a tiny working prototype today",
+        text: "You want a usable screen, real interactions, responsive layout, and a local browser check before you show it to someone.",
+        best: "codex",
+        codex: 15,
+        claude: 9,
+        lesson: "Codex is well suited for creating a working artifact quickly, then validating the actual behavior in the local environment.",
+        close: "Claude Code may be great for shaping the concept, but this round values immediate build-and-test momentum."
+      },
+      {
+        category: "Long context",
+        difficulty: "medium",
+        title: "Summarize a huge product discussion into decisions",
+        text: "The source material is messy: meeting notes, design comments, concerns, rejected options, and a few unresolved questions.",
+        best: "claude",
+        codex: 9,
+        claude: 15,
+        lesson: "Claude Code tends to shine when the work is synthesis: preserving nuance, organizing lots of context, and explaining why decisions matter.",
+        close: "Codex can summarize, but its distinctive value is stronger once those decisions need to become repo changes."
+      },
+      {
+        category: "Debugging",
+        difficulty: "hard",
+        title: "A CLI command crashes only after a migration",
+        text: "You need logs, diffs, dependency checks, small patches, and a final command that proves the crash is gone.",
+        best: "codex",
+        codex: 16,
+        claude: 9,
+        lesson: "Codex is built for this kind of grounded debugging loop: gather evidence locally, make a scoped edit, and verify the result.",
+        close: "Claude Code may help reason about causes, but the winning move here is operating directly in the project."
+      },
+      {
+        category: "Writing",
+        difficulty: "warmup",
+        title: "Write a careful explanation for non-engineers",
+        text: "The audience wants plain language, a mental model, and examples without getting buried in implementation detail.",
+        best: "claude",
+        codex: 7,
+        claude: 14,
+        lesson: "Claude Code is a natural fit for polished explanatory writing and audience-aware framing.",
+        close: "Codex can explain its work clearly, but this mission is mostly communication rather than software operation."
+      },
+      {
+        category: "Code review",
+        difficulty: "hard",
+        title: "Review a risky pull request for regressions",
+        text: "You want specific bugs, line-level concerns, missing tests, and a short summary of what changed.",
+        best: "codex",
+        codex: 13,
+        claude: 12,
+        lesson: "This one is close. Codex gets the edge when the review can inspect the actual repo, run checks, and ground findings in files and lines.",
+        close: "Claude Code can be excellent at review reasoning, especially for conceptual risks and clear communication."
+      },
+      {
+        category: "Brainstorming",
+        difficulty: "final",
+        title: "Invent three approaches for a new developer tool",
+        text: "No repo exists yet. The goal is to explore options, name tradeoffs, and decide what would be worth prototyping first.",
+        best: "claude",
+        codex: 10,
+        claude: 14,
+        lesson: "Claude Code is often useful at the fuzzy front of a project: exploring directions, questioning assumptions, and shaping a coherent plan.",
+        close: "Once you pick an approach and start building, Codex becomes the stronger arcade character."
+      }
+    ];
+
+    const state = {
+      round: 0,
+      score: 0,
+      streak: 0,
+      codexPos: 0,
+      claudePos: 0,
+      answered: false
+    };
+
+    const els = {
+      roundPill: document.getElementById("roundPill"),
+      scorePill: document.getElementById("scorePill"),
+      streakPill: document.getElementById("streakPill"),
+      categoryTag: document.getElementById("categoryTag"),
+      difficultyTag: document.getElementById("difficultyTag"),
+      scenarioTitle: document.getElementById("scenarioTitle"),
+      scenarioText: document.getElementById("scenarioText"),
+      feedback: document.getElementById("feedback"),
+      nextButton: document.getElementById("nextButton"),
+      restartButton: document.getElementById("restartButton"),
+      codexRunner: document.getElementById("codexRunner"),
+      claudeRunner: document.getElementById("claudeRunner"),
+      codexCard: document.getElementById("codexCard"),
+      claudeCard: document.getElementById("claudeCard"),
+      gamePanel: document.getElementById("gamePanel")
+    };
+
+    const choiceButtons = Array.from(document.querySelectorAll(".choice"));
+
+    function renderMission() {
+      const mission = missions[state.round];
+      state.answered = false;
+      els.roundPill.textContent = `Round ${state.round + 1} / ${missions.length}`;
+      els.scorePill.textContent = `Score ${state.score}`;
+      els.streakPill.textContent = `Streak ${state.streak}`;
+      els.categoryTag.textContent = mission.category;
+      els.difficultyTag.textContent = `Difficulty: ${mission.difficulty}`;
+      els.scenarioTitle.textContent = mission.title;
+      els.scenarioText.textContent = mission.text;
+      els.nextButton.disabled = true;
+      els.nextButton.textContent = state.round === missions.length - 1 ? "Show Results" : "Next Mission";
+      els.feedback.querySelector("h3").textContent = "Choose your agent.";
+      els.feedback.querySelector("p").textContent = "Think about the shape of the work: hands-on repo operation, broad reasoning, writing, or planning.";
+      choiceButtons.forEach(button => button.disabled = false);
+      setActiveAgent(null);
+      moveRunners();
+    }
+
+    function choose(agent) {
+      if (state.answered) return;
+      const mission = missions[state.round];
+      const correct = agent === mission.best;
+      state.answered = true;
+      state.score += correct ? 100 + state.streak * 10 : 25;
+      state.streak = correct ? state.streak + 1 : 0;
+      state.codexPos += mission.codex;
+      state.claudePos += mission.claude;
+      choiceButtons.forEach(button => button.disabled = true);
+      els.nextButton.disabled = false;
+      els.scorePill.textContent = `Score ${state.score}`;
+      els.streakPill.textContent = `Streak ${state.streak}`;
+      setActiveAgent(agent);
+      moveRunners();
+      els.feedback.querySelector("h3").textContent = correct ? "Good pick." : "Useful miss.";
+      els.feedback.querySelector("p").textContent = `${mission.lesson} ${mission.close}`;
+    }
+
+    function setActiveAgent(agent) {
+      els.codexCard.classList.toggle("active", agent === "codex");
+      els.claudeCard.classList.toggle("active", agent === "claude");
+    }
+
+    function moveRunners() {
+      const max = missions.reduce((sum, mission) => sum + Math.max(mission.codex, mission.claude), 0);
+      const codexPct = Math.min(78, 4 + state.codexPos / max * 76);
+      const claudePct = Math.min(78, 4 + state.claudePos / max * 76);
+      els.codexRunner.style.left = `${codexPct}%`;
+      els.claudeRunner.style.left = `${claudePct}%`;
+    }
+
+    function next() {
+      if (!state.answered) return;
+      if (state.round < missions.length - 1) {
+        state.round += 1;
+        renderMission();
+      } else {
+        showResults();
+      }
+    }
+
+    function showResults() {
+      const winner = state.codexPos >= state.claudePos ? "Codex crossed the finish line first for hands-on build work." : "Claude Code crossed the finish line first for reasoning-heavy work.";
+      els.roundPill.textContent = "Complete";
+      els.nextButton.disabled = true;
+      choiceButtons.forEach(button => button.disabled = true);
+      els.gamePanel.innerHTML = `
+        <div class="round-meta">
+          <span class="tag">Final score: ${state.score}</span>
+          <span class="tag">${winner}</span>
+        </div>
+        <article class="scenario">
+          <h2>What the game is teaching</h2>
+          <p>Codex and Claude Code overlap, but their strongest moments feel different. Choose by the job, not by team loyalty.</p>
+        </article>
+        <div class="result-grid">
+          <section class="result-card">
+            <h3>Use Codex when...</h3>
+            <ul>
+              <li>You want direct repo edits.</li>
+              <li>You need terminal commands and verification.</li>
+              <li>You are building a usable local artifact.</li>
+              <li>You want a code-review or debugging loop grounded in files.</li>
+            </ul>
+          </section>
+          <section class="result-card">
+            <h3>Use Claude Code when...</h3>
+            <ul>
+              <li>You need broad reasoning or planning.</li>
+              <li>You are synthesizing lots of messy context.</li>
+              <li>You want polished explanations or writing.</li>
+              <li>You are exploring options before implementation.</li>
+            </ul>
+          </section>
+        </div>
+      `;
+      els.feedback.querySelector("h3").textContent = "Arcade lesson complete.";
+      els.feedback.querySelector("p").textContent = "The practical difference is workflow fit: Codex leans into operating on the workspace; Claude Code often shines when the work is reasoning, synthesis, and communication.";
+    }
+
+    function restart() {
+      state.round = 0;
+      state.score = 0;
+      state.streak = 0;
+      state.codexPos = 0;
+      state.claudePos = 0;
+      window.location.reload();
+    }
+
+    choiceButtons.forEach(button => {
+      button.addEventListener("click", () => choose(button.dataset.agent));
+    });
+    els.nextButton.addEventListener("click", next);
+    els.restartButton.addEventListener("click", restart);
+
+    renderMission();
+  </script>
+</body>
+</html>
